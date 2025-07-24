@@ -1,0 +1,49 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f5f7fa;
+}
+
+h1 {
+  text-align: center;
+  background-color: #3949ab;
+  color: white;
+  padding: 10px 0;
+  margin: 0;
+}
+
+#map {
+  height: 60vh;
+  width: 100%;
+}
+
+.form-container {
+  padding: 15px;
+  background-color: #fff;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+select, input, textarea, button {
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #bbb;
+  font-size: 1rem;
+}
+
+button {
+  background-color: #3949ab;
+  color: white;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background-color: #303f9f;
+}
