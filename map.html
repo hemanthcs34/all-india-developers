@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>City Pulse Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+    }
+    #map {
+      height: 70vh;
+    }
+    #formArea {
+      padding: 15px;
+    }
+    #filters {
+      padding: 10px;
+    }
+    input, select, textarea {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005dc3;
+    }
+
+    /* Toast Styles */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background-color: #333;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      z-index: 9999;
+    }
+
+    /* About Us Floating Panel */
+    #aboutPanel {
+      position: fixed;
+      top: 80px;
+      right: 30px;
+      background: white;
+      border: 2px solid #007bff;
+      padding: 15px;
+      width: 260px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      z-index: 999;
+      display: none;
+      border-radius: 10px;
+    }
+
+    #aboutToggle {
+      position: fixed;
+      top: 20px;
+      right: 30px;
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    #aboutToggle:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="filters">
+    <strong>Filter Markers:</strong><br />
+    <label><input type="checkbox" class="filter" value="⚡" checked> ⚡ Power Outage</label>
+    <label><input type="checkbox" class="filter" value="🚧" checked> 🚧 Roadblock</label>
+    <label><input type="checkbox" class="filter" value="🎭" checked> 🎭 Event</label>
+    <label><input type="checkbox" class="filter" value="☔" checked> ☔ Rain</label>
+  </div>
+
+  <div id="formArea">
+    <form id="postForm">
+      <select id="category">
+        <option value="⚡">⚡ Power Outage</option>
+        <option value="🚧">🚧 Roadblock</option>
+        <option value="🎭">🎭 Event</option>
+        <option value="☔">☔ Rain</option>
+      </select>
+      <input type="text" id="title" placeholder="Title" required />
+      <textarea id="description" placeholder="Description (optional)"></textarea>
+      <input type="file" id="imageInput" accept="image/*" />
+      <button type="submit">Post</button>
+    </form>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast">🚀 Update posted successfully!</div>
+
+  <!-- Floating About Us Panel -->
+  <div id="aboutPanel">
+    <h3>About Us</h3>
+    <p>
+      Ushe Nav – City Pulse Agent is your smart companion for real-time city updates. 
+      From roadblocks 🚧 to local events 🎭, we help citizens stay informed and connected 
+      through geo-tagged community posts. Built by young innovators to enable smarter cities.
+    </p>
+    <button onclick="document.getElementById('aboutPanel').style.display='none'">Close</button>
+  </div>
+
+  <!-- Toggle Button -->
+  <button id="aboutToggle" onclick="toggleAbout()">ℹ️ About Us</button>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let map;
+    let markers = [];
+    let currentPos = null;
+
+    function showToast() {
+      const toast = document.getElementById("toast");
+      toast.style.opacity = "1";
+      setTimeout(() => {
+        toast.style.opacity = "0";
+      }, 3000);
+    }
+
+    function initMap() {
+      map = L.map('map').setView([0, 0], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const { latitude, longitude } = pos.coords;
+          currentPos = { lat: latitude, lng: longitude };
+          map.setView([latitude, longitude], 16);
+
+          L.circle([latitude, longitude], {
+            radius: 1000,
+            color: "blue",
+            fillColor: "#cce5ff",
+            fillOpacity: 0.2,
+          }).addTo(map);
+
+          loadFromLocalStorage();
+        }, () => alert("Location permission denied!"));
+      }
+    }
+
+    function addMarker(lat, lon, title, description, category, imageDataURL) {
+      const popupContent =
+        `<b>${category} ${title}</b><br>${description || ""}` +
+        (imageDataURL ? `<br><img src="${imageDataURL}" style="width:100px;margin-top:5px;">` : "");
+
+      const marker = L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+      marker.category = category;
+      markers.push(marker);
+    }
+
+    function saveToLocalStorage(data) {
+      const saved = JSON.parse(localStorage.getItem("posts") || "[]");
+      saved.push(data);
+      localStorage.setItem("posts", JSON.stringify(saved));
+    }
+
+    function loadFromLocalStorage() {
+      const saved = JSON.parse(localStorage.getItem("posts") || "[]");
+      saved.forEach((post) => {
+        addMarker(post.lat, post.lon, post.title, post.description, post.category, post.image);
+      });
+    }
+
+    document.getElementById("postForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const category = document.getElementById("category").value;
+      const title = document.getElementById("title").value;
+      const description = document.getElementById("description").value;
+      const fileInput = document.getElementById("imageInput");
+      const file = fileInput.files[0];
+
+      if (!currentPos) return alert("Location not available yet!");
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const imageDataURL = reader.result;
+          addMarker(currentPos.lat, currentPos.lng, title, description, category, imageDataURL);
+          saveToLocalStorage({ lat: currentPos.lat, lon: currentPos.lng, title, description, category, image: imageDataURL });
+          document.getElementById("postForm").reset();
+          showToast();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        addMarker(currentPos.lat, currentPos.lng, title, description, category, null);
+        saveToLocalStorage({ lat: currentPos.lat, lon: currentPos.lng, title, description, category, image: null });
+        document.getElementById("postForm").reset();
+        showToast();
+      }
+    });
+
+    document.querySelectorAll(".filter").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const selected = Array.from(document.querySelectorAll(".filter:checked")).map(cb => cb.value);
+        markers.forEach(marker => {
+          if (selected.includes(marker.category)) {
+            marker.addTo(map);
+          } else {
+            map.removeLayer(marker);
+          }
+        });
+      });
+    });
+
+    function toggleAbout() {
+      const panel = document.getElementById("aboutPanel");
+      panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "block" : "none";
+    }
+
+    initMap();
+  </script>
+</body>
+</html>

@@ -22,6 +22,14 @@ function addMarker(lat, lon, title, description, category) {
   markers.push(marker);
 }
 
+function showToast() {
+  const toast = document.getElementById("toast");
+  toast.style.opacity = 1;
+  setTimeout(() => {
+    toast.style.opacity = 0;
+  }, 2500);
+}
+
 document.getElementById("postForm").addEventListener("submit", function (e) {
   e.preventDefault();
 
@@ -35,13 +43,15 @@ document.getElementById("postForm").addEventListener("submit", function (e) {
       const lon = pos.coords.longitude;
 
       addMarker(lat, lon, title, description, category);
-
-      // You can also push this to a backend later
       document.getElementById("postForm").reset();
-      alert("Post added to map!");
+      showToast();
 
     }, () => alert("Couldn't get location"));
   }
 });
 
-initMap();
+// 👇 Add this at the end
+function toggleAbout() {
+  const panel = document.getElementById("aboutPanel");
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
