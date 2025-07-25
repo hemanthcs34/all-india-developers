@@ -2,166 +2,194 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>City Pulse Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet/dist/leaflet.css"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ushe Nav – City Pulse Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body {
+    :root {
+      --primary-blue: #00bcd4;
+      --light-bg: #e0f7fa;
+      --glass-white: rgba(255, 255, 255, 0.6);
+      --text-dark: #1a1a1a;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
-      font-family: sans-serif;
+      padding: 0;
     }
-    #map {
-      height: 70vh;
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, var(--light-bg), #80deea);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: var(--text-dark);
+      animation: fadeIn 2s ease-in;
     }
-    #formArea {
-      padding: 15px;
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
     }
-    #filters {
-      padding: 10px;
-    }
-    input, select, textarea {
+
+    .background-blobs {
+      position: absolute;
       width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      font-size: 1em;
+      height: 100%;
+      overflow: hidden;
+      z-index: 0;
     }
-    button {
-      padding: 10px;
-      background: #007bff;
-      color: white;
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffffff, #b2ebf2);
+      filter: blur(100px);
+      opacity: 0.5;
+      animation: move 18s ease-in-out infinite alternate;
+    }
+
+    .blob1 {
+      width: 300px;
+      height: 300px;
+      top: 15%;
+      left: 5%;
+    }
+
+    .blob2 {
+      width: 400px;
+      height: 400px;
+      bottom: 10%;
+      right: 5%;
+    }
+
+    @keyframes move {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, -50px); }
+    }
+
+    .glass-card {
+      position: relative;
+      z-index: 2;
+      background: var(--glass-white);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 60px 40px;
+      text-align: center;
+      max-width: 400px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+    }
+
+    .logo-img {
+      width: 100px;
+      margin-bottom: 20px;
+      animation: slideDown 1s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+      animation: bounceIn 1s ease-in-out;
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    p {
+      font-size: 1rem;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 30px;
+      border-radius: 30px;
+      background: var(--primary-blue);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 1rem;
       border: none;
       cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 4px 15px rgba(0, 188, 212, 0.4);
+      transition: all 0.3s ease;
+      animation: pulse 2s infinite;
     }
-    button:hover {
-      background: #005dc3;
+
+    .btn:hover {
+      transform: scale(1.05);
+      background: #00acc1;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0px rgba(0,188,212,0.2); }
+      50% { box-shadow: 0 0 10px rgba(0,188,212,0.4); }
+      100% { box-shadow: 0 0 0px rgba(0,188,212,0.2); }
+    }
+
+    .floating-emojis {
+      position: absolute;
+      font-size: 26px;
+      opacity: 0.3;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .emoji1 { top: 20%; left: 10%; animation: float 6s ease-in-out infinite; }
+    .emoji2 { top: 40%; right: 15%; animation: float 8s ease-in-out infinite reverse; }
+    .emoji3 { bottom: 25%; left: 20%; animation: float 7s ease-in-out infinite; }
+    .emoji4 { bottom: 15%; right: 10%; animation: float 5s ease-in-out infinite reverse; }
+
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-15px); }
+      100% { transform: translateY(0px); }
+    }
+
+    @media screen and (max-width: 500px) {
+      .glass-card {
+        padding: 40px 25px;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-
-  <div id="filters">
-    <strong>Filter Markers:</strong><br />
-    <label><input type="checkbox" class="filter" value="⚡" checked> ⚡ Power Outage</label>
-    <label><input type="checkbox" class="filter" value="🚧" checked> 🚧 Roadblock</label>
-    <label><input type="checkbox" class="filter" value="🎭" checked> 🎭 Event</label>
-    <label><input type="checkbox" class="filter" value="☔" checked> ☔ Rain</label>
+  <div class="background-blobs">
+    <div class="blob blob1"></div>
+    <div class="blob blob2"></div>
   </div>
 
-  <div id="formArea">
-    <form id="postForm">
-      <select id="category">
-        <option value="⚡">⚡ Power Outage</option>
-        <option value="🚧">🚧 Roadblock</option>
-        <option value="🎭">🎭 Event</option>
-        <option value="☔">☔ Rain</option>
-      </select>
-      <input type="text" id="title" placeholder="Title" required />
-      <textarea id="description" placeholder="Description (optional)"></textarea>
-      <input type="file" id="imageInput" accept="image/*" />
-      <button type="submit">Post</button>
-    </form>
+  <div class="floating-emojis emoji1">⚡</div>
+  <div class="floating-emojis emoji2">🚧</div>
+  <div class="floating-emojis emoji3">☔</div>
+  <div class="floating-emojis emoji4">🎭</div>
+
+  <div class="glass-card">
+    <img src="logo.png" alt="Ushe Nav Logo" class="logo-img" />
+    <h1>Ushe Nav</h1>
+    <p>City Pulse Agent – Smarter Cities, Safer Citizens</p>
+    <a href="map.html" class="btn">Enter City Map</a>
   </div>
-
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    let map;
-    let markers = [];
-    let currentPos = null;
-
-    function initMap() {
-      map = L.map('map').setView([0, 0], 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-      }).addTo(map);
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          const { latitude, longitude } = pos.coords;
-          currentPos = { lat: latitude, lng: longitude };
-          map.setView([latitude, longitude], 16);
-
-          L.circle([latitude, longitude], {
-            radius: 1000,
-            color: "blue",
-            fillColor: "#cce5ff",
-            fillOpacity: 0.2,
-          }).addTo(map);
-
-          loadFromLocalStorage();
-        }, () => alert("Location permission denied!"));
-      }
-    }
-
-    function addMarker(lat, lon, title, description, category, imageDataURL) {
-      const popupContent =
-        `<b>${category} ${title}</b><br>${description || ""}` +
-        (imageDataURL ? `<br><img src="${imageDataURL}" style="width:100px;margin-top:5px;">` : "");
-
-      const marker = L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
-      marker.category = category;
-      markers.push(marker);
-    }
-
-    function saveToLocalStorage(data) {
-      const saved = JSON.parse(localStorage.getItem("posts") || "[]");
-      saved.push(data);
-      localStorage.setItem("posts", JSON.stringify(saved));
-    }
-
-    function loadFromLocalStorage() {
-      const saved = JSON.parse(localStorage.getItem("posts") || "[]");
-      saved.forEach((post) => {
-        addMarker(post.lat, post.lon, post.title, post.description, post.category, post.image);
-      });
-    }
-
-    document.getElementById("postForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const category = document.getElementById("category").value;
-      const title = document.getElementById("title").value;
-      const description = document.getElementById("description").value;
-      const fileInput = document.getElementById("imageInput");
-      const file = fileInput.files[0];
-
-      if (!currentPos) return alert("Location not available yet!");
-
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const imageDataURL = reader.result;
-          addMarker(currentPos.lat, currentPos.lng, title, description, category, imageDataURL);
-          saveToLocalStorage({ lat: currentPos.lat, lon: currentPos.lng, title, description, category, image: imageDataURL });
-          document.getElementById("postForm").reset();
-          alert("Posted with image!");
-        };
-        reader.readAsDataURL(file);
-      } else {
-        addMarker(currentPos.lat, currentPos.lng, title, description, category, null);
-        saveToLocalStorage({ lat: currentPos.lat, lon: currentPos.lng, title, description, category, image: null });
-        document.getElementById("postForm").reset();
-        alert("Posted!");
-      }
-    });
-
-    document.querySelectorAll(".filter").forEach(cb => {
-      cb.addEventListener("change", () => {
-        const selected = Array.from(document.querySelectorAll(".filter:checked")).map(cb => cb.value);
-        markers.forEach(marker => {
-          if (selected.includes(marker.category)) {
-            marker.addTo(map);
-          } else {
-            map.removeLayer(marker);
-          }
-        });
-      });
-    });
-
-    initMap();
-  </script>
 </body>
 </html>
+
