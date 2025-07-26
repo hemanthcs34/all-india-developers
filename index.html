@@ -194,7 +194,7 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        const response = await fetch('https://ushe-nav-backend.onrender.com/api/auth/current_user');
+        const response = await fetch('https://ushe-nav-backend.onrender.com/api/auth/current_user', { credentials: 'include' });
         const actionButton = document.getElementById('main-action-btn');
 
         if (response.ok) {
