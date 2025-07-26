@@ -70,11 +70,6 @@
             }
         }
 
-        function sanitizeHTML(str) {
-          if (!str) return '';
-          return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        }
-
         async function loadDashboard() {
             document.getElementById('username').textContent = currentUser.username;
             document.getElementById('points').textContent = currentUser.points;
@@ -88,7 +83,7 @@
                 .filter(post => post.imagePath) // Only show posts with images
                 .map(post => `
                     <div class="post-item">
-                        <img src="${post.imagePath}" alt="${sanitizeHTML(post.title)}">
+                        <img src="${post.imagePath}" alt="${post.title}">
                         <div class="post-overlay">
                             <div class="post-stats">
                                 👍 ${post.upvotes.length} &nbsp;&nbsp; 💬 ${post.comments.length}
