@@ -59,6 +59,11 @@
             }
         }
 
+        function sanitizeHTML(str) {
+          if (!str) return '';
+          return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
         function createPostCard(post) {
             if (!currentUser) {
                 console.error("FATAL: Attempted to render a post card without a logged-in user.");
@@ -71,19 +76,19 @@
 
             return `
                 <div class="post-card" id="post-${post._id}">
-                    <div class="post-header">${post.author}</div>
-                    ${post.imagePath ? `<div class="post-image"><img src="${post.imagePath}" alt="${post.title}"></div>` : ''}
+                    <div class="post-header">${sanitizeHTML(post.author)}</div>
+                    ${post.imagePath ? `<div class="post-image"><img src="${post.imagePath}" alt="${sanitizeHTML(post.title)}"></div>` : ''}
                     <div class="post-content">
                         <div class="post-actions">
                             <button onclick="castVote('${post._id}', 'up')">${isLiked ? '❤️' : '🤍'}</button>
                             <span>${post.category}</span>
                         </div>
                         <div class="post-likes">${upvotes.length} likes</div>
-                        <b>${post.title}</b>
-                        <p>${post.description || ''}</p>
+                        <b>${sanitizeHTML(post.title)}</b>
+                        <p>${sanitizeHTML(post.description) || ''}</p>
                     </div>
                     <div class="comments-section">
-                        ${comments.map(c => `<div class="comment"><b>${c.username}</b> ${c.text}</div>`).join('')}
+                        ${comments.map(c => `<div class="comment"><b>${sanitizeHTML(c.username)}</b> ${sanitizeHTML(c.text)}</div>`).join('')}
                     </div>
                     <form class="comment-form" onsubmit="handleComment(event, '${post._id}')">
                         <input type="text" name="comment" placeholder="Add a comment..." autocomplete="off" required>

@@ -106,7 +106,7 @@
 
           // This is now the correct place to send the location,
           // after we've successfully retrieved it.
-          // The main socket connection is handled in initializeSockets()
+          // The main socket connection is now handled in initializeSockets()
 
           loadPostsFromServer();
         }, 
@@ -136,13 +136,18 @@
       '☔': createEmojiIcon('☔')
     };
 
+    function sanitizeHTML(str) {
+      if (!str) return '';
+      return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
     function addMarker(post) {
       const { _id, lat, lon, title, description, category, imagePath, upvotes, downvotes } = post;
       // Prepend server URL if it's a relative path
       const imageSrc = imagePath; // Cloudinary provides a full URL
 
       const popupContent =
-        `<b>${category} ${title}</b><br>${description || ""}` +
+        `<b>${category} ${sanitizeHTML(title)}</b><br>${sanitizeHTML(description) || ""}` +
         (imageSrc ? `<br><img src="${imageSrc}" style="width:100px;margin-top:5px;">` : "") +
         `<br><hr style="margin: 5px 0;">` +
         `<div class="vote-buttons">` +

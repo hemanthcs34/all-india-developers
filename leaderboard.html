@@ -56,6 +56,11 @@
             }
         }
 
+        function sanitizeHTML(str) {
+          if (!str) return '';
+          return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
         function getTrophy(rank) {
             if (rank === 1) return '🥇';
             if (rank === 2) return '🥈';
@@ -71,7 +76,7 @@
                 <li class="leaderboard-item">
                     <span class="rank">${index + 1}</span>
                     <span class="trophy">${getTrophy(index + 1)}</span>
-                    <span class="username">${user.username}</span>
+                    <span class="username">${sanitizeHTML(user.username)}</span>
                     <span class="points">${user.points} pts</span>
                 </li>
             `).join('');
