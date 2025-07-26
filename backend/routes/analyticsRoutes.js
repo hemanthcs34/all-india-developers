@@ -1,8 +1,7 @@
-// routes/analyticsRoutes.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { getAnalytics } = require("../controllers/analyticsController");
+const { getAnalyticsSummary } = require('../controllers/analyticsController');
 
-router.get("/", getAnalytics);
+router.get('/summary', getAnalyticsSummary);
 
 module.exports = router;

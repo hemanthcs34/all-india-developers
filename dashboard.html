@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Ushe Nav</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #007bff;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+        a {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #007bff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ushe Nav - Analytics Dashboard</h1>
+    <div class="container">
+        <div class="chart-card">
+            <h2>Posts by Category</h2>
+            <canvas id="categoryChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h2>Posts by Hour of Day (UTC)</h2>
+            <canvas id="timeChart"></canvas>
+        </div>
+    </div>
+    <a href="map.html">Back to Map</a>
+
+    <script>
+        async function fetchAnalytics() {
+            try {
+                const response = await fetch('http://localhost:5000/api/analytics/summary');
+                const data = await response.json();
+                renderCategoryChart(data.postsPerCategory);
+                renderTimeChart(data.activeTimeSlots);
+            } catch (error) {
+                console.error('Failed to fetch analytics:', error);
+                alert('Could not load analytics data.');
+            }
+        }
+
+        function renderCategoryChart(categoryData) {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            const labels = categoryData.map(item => item._id);
+            const data = categoryData.map(item => item.count);
+
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Posts per Category',
+                        data: data,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
+                    }]
+                }
+            });
+        }
+
+        function renderTimeChart(timeData) {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            // Create a full 24-hour array initialized to 0
+            const hourlyCounts = Array(24).fill(0);
+            timeData.forEach(item => {
+                hourlyCounts[item._id] = item.count;
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'Posts per Hour',
+                        data: hourlyCounts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchAnalytics);
+    </script>
+</body>
+</html>

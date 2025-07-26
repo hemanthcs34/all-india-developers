@@ -82,6 +82,14 @@
     #aboutToggle:hover {
       background-color: #0056b3;
     }
+
+    /* Custom Emoji Marker Styles */
+    .emoji-icon {
+      font-size: 24px; /* Make the emoji bigger */
+      background: transparent;
+      border: none;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -97,15 +105,15 @@
 
   <div id="formArea">
     <form id="postForm">
-      <select id="category">
+      <select id="category" name="category">
         <option value="⚡">⚡ Power Outage</option>
         <option value="🚧">🚧 Roadblock</option>
         <option value="🎭">🎭 Event</option>
         <option value="☔">☔ Rain</option>
       </select>
-      <input type="text" id="title" placeholder="Title" required />
-      <textarea id="description" placeholder="Description (optional)"></textarea>
-      <input type="file" id="imageInput" accept="image/*" />
+      <input type="text" id="title" name="title" placeholder="Title" required />
+      <textarea id="description" name="description" placeholder="Description (optional)"></textarea>
+      <input type="file" id="imageInput" name="image" accept="image/*" />
       <button type="submit">Post</button>
     </form>
   </div>
@@ -126,15 +134,18 @@
 
   <!-- Toggle Button -->
   <button id="aboutToggle" onclick="toggleAbout()">ℹ️ About Us</button>
+  <a href="dashboard.html" id="dashboardLink" style="position: fixed; top: 20px; right: 150px; background: #ff9800; color: white; padding: 10px 14px; border-radius: 8px; text-decoration: none; z-index: 1000;">📊 Dashboard</a>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="http://localhost:5000/socket.io/socket.io.js"></script>
   <script>
     let map;
     let markers = [];
     let currentPos = null;
 
-    function showToast() {
+    function showToast(message = "🚀 Update posted successfully!") {
       const toast = document.getElementById("toast");
+      toast.textContent = message;
       toast.style.opacity = "1";
       setTimeout(() => {
         toast.style.opacity = "0";
@@ -160,60 +171,117 @@
             fillOpacity: 0.2,
           }).addTo(map);
 
-          loadFromLocalStorage();
-        }, () => alert("Location permission denied!"));
+          // Send our location to the server for validation requests
+          socket.emit('user-location', { lat: latitude, lon: longitude });
+
+          loadPostsFromServer();
+        }, 
+        () => alert("Location permission denied! The app cannot function without it."), 
+        {
+          enableHighAccuracy: true, // Request a more accurate position
+          timeout: 10000,           // Don't wait more than 10 seconds
+          maximumAge: 0             // Don't use a cached position
+        });
       }
     }
 
-    function addMarker(lat, lon, title, description, category, imageDataURL) {
+    // --- Custom Emoji Icons ---
+    const createEmojiIcon = (emoji) => {
+      return L.divIcon({
+        html: emoji,
+        className: 'emoji-icon',
+        iconSize: [30, 30],
+        iconAnchor: [15, 30] // Point of the icon that corresponds to marker's location
+      });
+    };
+
+    const categoryIcons = {
+      '⚡': createEmojiIcon('⚡'),
+      '🚧': createEmojiIcon('🚧'),
+      '🎭': createEmojiIcon('🎭'),
+      '☔': createEmojiIcon('☔')
+    };
+
+    function addMarker(post) {
+      const { _id, lat, lon, title, description, category, imagePath, userValidations } = post;
+      // Prepend server URL if it's a relative path
+      const imageSrc = imagePath ? `http://localhost:5000${imagePath}` : null;
+
       const popupContent =
         `<b>${category} ${title}</b><br>${description || ""}` +
-        (imageDataURL ? `<br><img src="${imageDataURL}" style="width:100px;margin-top:5px;">` : "");
+        (imageSrc ? `<br><img src="${imageSrc}" style="width:100px;margin-top:5px;">` : "") +
+        `<br><hr style="margin: 5px 0;">User Validations: <span id="validations-${_id}">${userValidations || 0}</span>`;
 
-      const marker = L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+      const icon = categoryIcons[category] || L.marker.prototype.options.icon; // Fallback to default if category is unknown
+      const marker = L.marker([lat, lon], { icon: icon }).addTo(map).bindPopup(popupContent);
       marker.category = category;
       markers.push(marker);
     }
 
-    function saveToLocalStorage(data) {
-      const saved = JSON.parse(localStorage.getItem("posts") || "[]");
-      saved.push(data);
-      localStorage.setItem("posts", JSON.stringify(saved));
+    async function loadPostsFromServer() {
+      try {
+        const response = await fetch('http://localhost:5000/api/media/posts');
+        const posts = await response.json();
+        posts.forEach((post) => {
+          addMarker(post);
+        });
+      } catch (error) {
+        console.error("Failed to load posts:", error);
+        alert("Could not connect to the server to load posts.");
+      }
     }
 
-    function loadFromLocalStorage() {
-      const saved = JSON.parse(localStorage.getItem("posts") || "[]");
-      saved.forEach((post) => {
-        addMarker(post.lat, post.lon, post.title, post.description, post.category, post.image);
-      });
+    async function validatePost(postId) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/media/${postId}/validate`, {
+          method: 'POST',
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          alert(`Failed to validate: ${errorData.message || 'Unknown error'}`);
+        } else {
+          showToast("✅ Thanks for validating!");
+        }
+      } catch (error) {
+        console.error('Validation request failed:', error);
+      }
     }
 
-    document.getElementById("postForm").addEventListener("submit", function (e) {
+    document.getElementById("postForm").addEventListener("submit", async function (e) {
       e.preventDefault();
-
-      const category = document.getElementById("category").value;
-      const title = document.getElementById("title").value;
-      const description = document.getElementById("description").value;
-      const fileInput = document.getElementById("imageInput");
-      const file = fileInput.files[0];
 
       if (!currentPos) return alert("Location not available yet!");
 
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const imageDataURL = reader.result;
-          addMarker(currentPos.lat, currentPos.lng, title, description, category, imageDataURL);
-          saveToLocalStorage({ lat: currentPos.lat, lon: currentPos.lng, title, description, category, image: imageDataURL });
+      // --- UI Change: Show loading state ---
+      const submitButton = e.target.querySelector('button[type="submit"]');
+      const originalButtonText = submitButton.innerHTML;
+      submitButton.disabled = true;
+      submitButton.innerHTML = 'Analyzing... 🧠';
+
+      // FormData now automatically captures all named form fields
+      const formData = new FormData(e.target);
+      formData.append('lat', currentPos.lat);
+      formData.append('lon', currentPos.lng);
+
+      try {
+        const response = await fetch('http://localhost:5000/api/media/upload', {
+          method: 'POST',
+          body: formData, // Browser will set Content-Type to multipart/form-data
+        });
+        if (response.ok) {
           document.getElementById("postForm").reset();
           showToast();
-        };
-        reader.readAsDataURL(file);
-      } else {
-        addMarker(currentPos.lat, currentPos.lng, title, description, category, null);
-        saveToLocalStorage({ lat: currentPos.lat, lon: currentPos.lng, title, description, category, image: null });
-        document.getElementById("postForm").reset();
-        showToast();
+        } else {
+          const errorData = await response.json();
+          alert(`Failed to create post: ${errorData.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error posting data:', error);
+        alert('Error connecting to the server.');
+      } finally {
+        // --- UI Change: Restore button state ---
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
       }
     });
 
@@ -236,6 +304,35 @@
     }
 
     initMap();
+
+    // --- Socket.IO Client Logic ---
+    const socket = io("http://localhost:5000");
+
+    socket.on("connect", () => {
+      console.log("✅ Connected to real-time server:", socket.id);
+    });
+
+    // Listen for new posts broadcast from the server
+    socket.on("new-post", (post) => {
+      console.log("New post received via WebSocket:", post);
+      addMarker(post);
+    });
+
+    // Listen for validation requests from the server
+    socket.on('request-validation', (post) => {
+      const userConfirms = confirm(
+        `A nearby '${post.category} ${post.title}' was reported.\n\nCan you confirm this is happening?`
+      );
+      if (userConfirms) {
+        validatePost(post._id);
+      }
+    });
+
+    // Listen for validation updates to update the UI in real-time
+    socket.on('post-validated', ({ postId, userValidations }) => {
+      const validationSpan = document.getElementById(`validations-${postId}`);
+      if (validationSpan) validationSpan.textContent = userValidations;
+    });
   </script>
 </body>
 </html>
