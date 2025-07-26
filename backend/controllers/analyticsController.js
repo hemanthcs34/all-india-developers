@@ -2,7 +2,7 @@ const Media = require('../models/media'); // Corrected: was likely '../models/Me
 
 // @desc    Get analytics summary for charts
 // @route   GET /api/analytics/summary
-exports.getSummary = async (req, res) => {
+exports.getAnalyticsSummary = async (req, res) => {
     try {
         // Data for posts per category pie chart
         const postsPerCategory = await Media.aggregate([
