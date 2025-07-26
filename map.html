@@ -106,8 +106,8 @@
 
           // This is now the correct place to send the location,
           // after we've successfully retrieved it.
-          // The main socket connection is now handled in initializeSockets()
-
+          const socket = io("https://mindmaze-ushe-nav.onrender.com", { withCredentials: true });
+          socket.emit('user-location', { lat: latitude, lon: longitude });
           loadPostsFromServer();
         }, 
         () => alert("Location permission denied! The app cannot function without it."), 
@@ -136,18 +136,13 @@
       '☔': createEmojiIcon('☔')
     };
 
-    function sanitizeHTML(str) {
-      if (!str) return '';
-      return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
     function addMarker(post) {
       const { _id, lat, lon, title, description, category, imagePath, upvotes, downvotes } = post;
       // Prepend server URL if it's a relative path
       const imageSrc = imagePath; // Cloudinary provides a full URL
 
       const popupContent =
-        `<b>${category} ${sanitizeHTML(title)}</b><br>${sanitizeHTML(description) || ""}` +
+        `<b>${category} ${title}</b><br>${description || ""}` +
         (imageSrc ? `<br><img src="${imageSrc}" style="width:100px;margin-top:5px;">` : "") +
         `<br><hr style="margin: 5px 0;">` +
         `<div class="vote-buttons">` +
@@ -255,10 +250,7 @@
         const socket = io("https://mindmaze-ushe-nav.onrender.com", { withCredentials: true });
 
         // Register the current user with the socket server for notifications
-        if (currentUser && currentUser.username) {
-          socket.emit('user-location', currentPos); // Send location on socket connection
-          socket.emit('register-user', currentUser.username);
-        }
+        if (currentUser && currentUser.username) socket.emit('register-user', currentUser.username);
 
         // Listen for new posts broadcast from the server
         socket.on("new-post", (post) => {
