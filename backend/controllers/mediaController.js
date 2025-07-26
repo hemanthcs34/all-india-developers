@@ -1,4 +1,4 @@
-const Media = require('../models/Media');
+const Media = require('../models/media');
 const User = require('../models/User');
 const axios = require('axios');
 const fs = require('fs');
@@ -121,33 +121,44 @@ exports.uploadPost = async (req, res) => {
   }
 };
 
-// @desc    Like or unlike a post
-// @route   POST /api/media/:id/like
-exports.likePost = async (req, res) => {
+// @desc    Vote on a post (up or down)
+// @route   POST /api/media/:id/vote
+exports.voteOnPost = async (req, res) => {
   try {
-    const { username } = req.body;
-    if (!username) return res.status(400).json({ message: 'Username is required.' });
+    const { username, voteType } = req.body; // voteType can be 'up' or 'down'
+    if (!username || !voteType) {
+      return res.status(400).json({ message: 'Username and voteType are required.' });
+    }
 
     const post = await Media.findById(req.params.id);
-    if (!post) return res.status(404).json({ message: 'Post not found.' });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found.' });
+    }
 
-    const io = require('../socket').getIO();
+    // Remove user from the opposite vote array if they're switching their vote
+    if (voteType === 'up') {
+      post.downvotes.pull(username);
+    } else if (voteType === 'down') {
+      post.upvotes.pull(username);
+    }
 
-    // Toggle like
-    if (post.likes.includes(username)) {
-      post.likes.pull(username); // Unlike
-      await User.findOneAndUpdate({ username: post.author }, { $inc: { points: -1 } });
+    // Toggle the vote in the correct array
+    const voteArray = voteType === 'up' ? post.upvotes : post.downvotes;
+    if (voteArray.includes(username)) {
+      voteArray.pull(username); // User is un-voting
+      if (voteType === 'up') await User.findOneAndUpdate({ username: post.author }, { $inc: { points: -1 } });
     } else {
-      post.likes.push(username); // Like
-      await User.findOneAndUpdate({ username: post.author }, { $inc: { points: 1 } });
+      voteArray.push(username); // User is casting a new vote
+      if (voteType === 'up') await User.findOneAndUpdate({ username: post.author }, { $inc: { points: 1 } });
     }
 
     await post.save();
 
-    io.emit('post-updated', post);
+    require('../socket').getIO().emit('post-updated', post);
     res.json(post);
   } catch (error) {
-    res.status(500).json({ message: 'Server error while liking post.' });
+    console.error("Error voting on post:", error);
+    res.status(500).json({ message: 'Server error while voting on post.' });
   }
 };
 
@@ -184,25 +195,4 @@ exports.getPosts = async (req, res) => {
   // Fetch all posts from the database, newest first.
   const posts = await Media.find({}).sort({ timestamp: -1 });
   res.json(posts);
-};
-
-// @desc    Validate a media post
-// @route   POST /api/media/:id/validate
-exports.validatePost = async (req, res) => {
-  try {
-    const post = await Media.findById(req.params.id);
-    if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
-    }
-
-    post.userValidations = (post.userValidations || 0) + 1;
-    await post.save();
-
-    // Broadcast the updated validation count to all clients
-    require('../socket').getIO().emit('post-validated', { postId: post._id, userValidations: post.userValidations });
-
-    res.json(post);
-  } catch (error) {
-    res.status(500).json({ message: 'An unexpected server error occurred.' });
-  }
 };

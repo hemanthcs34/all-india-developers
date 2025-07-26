@@ -10,8 +10,8 @@ const MediaSchema = new mongoose.Schema({
   imagePath: { type: String }, // Path to the stored image
   isValidated: { type: Boolean, default: false },
   aiTags: { type: [String], default: [] },
-  userValidations: { type: Number, default: 0 },
-  likes: { type: [String], default: [] }, // Array of usernames who liked
+  upvotes: { type: [String], default: [] }, // Array of usernames who upvoted
+  downvotes: { type: [String], default: [] }, // Array of usernames who downvoted
   comments: [{
     username: String,
     text: String,

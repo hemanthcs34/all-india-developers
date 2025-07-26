@@ -65,9 +65,9 @@
                 return '';
             }
 
-            const likes = post.likes || [];
+            const upvotes = post.upvotes || [];
             const comments = post.comments || [];
-            const isLiked = likes.includes(currentUser.username);
+            const isLiked = upvotes.includes(currentUser.username);
 
             return `
                 <div class="post-card" id="post-${post._id}">
@@ -75,10 +75,10 @@
                     ${post.imagePath ? `<div class="post-image"><img src="http://localhost:5000${post.imagePath}" alt="${post.title}"></div>` : ''}
                     <div class="post-content">
                         <div class="post-actions">
-                            <button onclick="likePost('${post._id}')">${isLiked ? '❤️' : '🤍'}</button>
+                            <button onclick="castVote('${post._id}', 'up')">${isLiked ? '❤️' : '🤍'}</button>
                             <span>${post.category}</span>
                         </div>
-                        <div class="post-likes">${likes.length} likes</div>
+                        <div class="post-likes">${upvotes.length} likes</div>
                         <b>${post.title}</b>
                         <p>${post.description || ''}</p>
                     </div>
@@ -100,12 +100,12 @@
             feedContainer.innerHTML = posts.map(createPostCard).join('');
         }
 
-        async function likePost(postId) {
+        async function castVote(postId, voteType) {
             if (!currentUser) return;
-            await fetch(`/api/media/${postId}/like`, {
+            await fetch(`/api/media/${postId}/vote`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUser.username })
+                body: JSON.stringify({ username: currentUser.username, voteType })
             });
         }
 
@@ -159,4 +159,3 @@
     </script>
 </body>
 </html>
-
