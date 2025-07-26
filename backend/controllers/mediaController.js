@@ -85,25 +85,6 @@ exports.uploadPost = async (req, res) => {
     // Award points to the user for creating a post
     await User.findOneAndUpdate({ username: author }, { $inc: { points: 10 }, $setOnInsert: { username: author } }, { upsert: true });
 
-
-    const io = require('../socket').getIO();
-
-    // --- User Validation Logic ---
-    // For certain categories, ask nearby users to validate.
-    if (['⚡', '🚧', '☔'].includes(category)) {
-      const userLocations = require('../socket').getLocations();
-      const validationRadius = 1; // 1 km
-
-      Object.keys(userLocations).forEach(socketId => {
-        const userLocation = userLocations[socketId];
-        const distance = getDistance(newPost.lat, newPost.lon, userLocation.lat, userLocation.lon);
-
-        if (distance <= validationRadius) {
-          io.to(socketId).emit('request-validation', newPost);
-        }
-      });
-    }
-
     // This is the magic: broadcast the new post to ALL connected clients.
     // Get the io instance ONLY when it's needed, ensuring it's initialized.
     require('../socket').getIO().emit('new-post', newPost);
