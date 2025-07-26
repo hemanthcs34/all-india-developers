@@ -248,11 +248,18 @@
         // --- Socket.IO Client Logic ---
         const socket = io("https://ushe-nav-backend.onrender.com");
 
+        // Register the current user with the socket server for notifications
+        if (currentUser && currentUser.username) {
+          socket.emit('register-user', currentUser.username);
+        }
+
         // Listen for new posts broadcast from the server
         socket.on("new-post", (post) => {
           console.log("New post received via WebSocket:", post);
           addMarker(post);
         });
+
+        socket.on('notification', (data) => showToast(data.message));
 
         // Listen for any post update (vote, comment) and re-render the marker's popup
         socket.on('post-updated', (updatedPost) => {

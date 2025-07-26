@@ -133,7 +133,16 @@ exports.voteOnPost = async (req, res) => {
 
     await post.save();
 
-    require('../socket').getIO().emit('post-updated', post);
+    const socketManager = require('../socket');
+    const io = socketManager.getIO();
+    io.emit('post-updated', post);
+
+    // Send a notification to the post author if they are online
+    if (username !== post.author) { // Don't notify for self-votes
+      const authorSocketId = socketManager.getUserSocketId(post.author);
+      if (authorSocketId) io.to(authorSocketId).emit('notification', { message: `👍 ${username} liked your post!` });
+    }
+
     res.json(post);
   } catch (error) {
     console.error("Error voting on post:", error);
@@ -159,8 +168,15 @@ exports.commentOnPost = async (req, res) => {
 
     await post.save();
 
-    const io = require('../socket').getIO();
+    const socketManager = require('../socket');
+    const io = socketManager.getIO();
     io.emit('post-updated', post);
+
+    // Send a notification to the post author if they are online
+    if (username !== post.author) { // Don't notify for self-comments
+      const authorSocketId = socketManager.getUserSocketId(post.author);
+      if (authorSocketId) io.to(authorSocketId).emit('notification', { message: `💬 ${username} commented on your post!` });
+    }
 
     res.status(201).json(post);
   } catch (error) {
