@@ -13,7 +13,9 @@ io.on('connection', (socket) => {
   console.log('✅ Client connected:', socket.id);
 });
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+  dbName: 'ushe-nav' // Explicitly set the database name for robustness
+})
   .then(() => {
     console.log('✅ MongoDB Connected Successfully.');
     server.listen(PORT, () => {
