@@ -5,92 +5,8 @@
   <title>City Pulse Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-    }
-    #map {
-      height: 70vh;
-    }
-    #formArea {
-      padding: 15px;
-    }
-    #filters {
-      padding: 10px;
-    }
-    input, select, textarea {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      font-size: 1em;
-    }
-    button {
-      padding: 10px;
-      background: #007bff;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #005dc3;
-    }
-
-    /* Toast Styles */
-    #toast {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      background-color: #333;
-      color: #fff;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 16px;
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out;
-      z-index: 9999;
-    }
-
-    /* About Us Floating Panel */
-    #aboutPanel {
-      position: fixed;
-      top: 80px;
-      right: 30px;
-      background: white;
-      border: 2px solid #007bff;
-      padding: 15px;
-      width: 260px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-      z-index: 999;
-      display: none;
-      border-radius: 10px;
-    }
-
-    #aboutToggle {
-      position: fixed;
-      top: 20px;
-      right: 30px;
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 8px;
-      cursor: pointer;
-      z-index: 1000;
-    }
-
-    #aboutToggle:hover {
-      background-color: #0056b3;
-    }
-
-    /* Custom Emoji Marker Styles */
-    .emoji-icon {
-      font-size: 24px; /* Make the emoji bigger */
-      background: transparent;
-      border: none;
-      text-align: center;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="map"></div>
@@ -133,8 +49,12 @@
   </div>
 
   <!-- Toggle Button -->
-  <button id="aboutToggle" onclick="toggleAbout()">ℹ️ About Us</button>
-  <a href="dashboard.html" id="dashboardLink" style="position: fixed; top: 20px; right: 150px; background: #ff9800; color: white; padding: 10px 14px; border-radius: 8px; text-decoration: none; z-index: 1000;">📊 Dashboard</a>
+  <div class="top-right-nav">
+    <a href="ushe-gram.html" class="nav-link">📸 Ushe-Gram</a>
+    <a href="leaderboard.html" class="nav-link">🏆 Leaderboard</a>
+    <a href="dashboard.html" class="nav-link">📊 Dashboard</a>
+    <button id="aboutToggle" onclick="toggleAbout()">ℹ️ About Us</button>
+  </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="http://localhost:5000/socket.io/socket.io.js"></script>
@@ -142,6 +62,19 @@
     let map;
     let markers = [];
     let currentPos = null;
+    let currentUser = null;
+
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/current_user');
+        if (!response.ok) window.location.href = 'login.html';
+        currentUser = await response.json();
+        initMap(); // Now we initialize the map
+        initializeSockets(); // And then the sockets
+      } catch (error) {
+        window.location.href = 'login.html';
+      }
+    }
 
     function showToast(message = "🚀 Update posted successfully!") {
       const toast = document.getElementById("toast");
@@ -171,7 +104,9 @@
             fillOpacity: 0.2,
           }).addTo(map);
 
-          // Send our location to the server for validation requests
+          // This is now the correct place to send the location,
+          // after we've successfully retrieved it.
+          const socket = io("http://localhost:5000");
           socket.emit('user-location', { lat: latitude, lon: longitude });
 
           loadPostsFromServer();
@@ -262,6 +197,7 @@
       const formData = new FormData(e.target);
       formData.append('lat', currentPos.lat);
       formData.append('lon', currentPos.lng);
+      formData.append('author', currentUser.username);
 
       try {
         const response = await fetch('http://localhost:5000/api/media/upload', {
@@ -303,36 +239,34 @@
       panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "block" : "none";
     }
 
-    initMap();
+    function initializeSockets() {
+        // --- Socket.IO Client Logic ---
+        const socket = io("http://localhost:5000");
 
-    // --- Socket.IO Client Logic ---
-    const socket = io("http://localhost:5000");
+        // Listen for new posts broadcast from the server
+        socket.on("new-post", (post) => {
+          console.log("New post received via WebSocket:", post);
+          addMarker(post);
+        });
 
-    socket.on("connect", () => {
-      console.log("✅ Connected to real-time server:", socket.id);
-    });
+        // Listen for validation requests from the server
+        socket.on('request-validation', (post) => {
+          const userConfirms = confirm(
+            `A nearby '${post.category} ${post.title}' was reported.\n\nCan you confirm this is happening?`
+          );
+          if (userConfirms) {
+            validatePost(post._id);
+          }
+        });
 
-    // Listen for new posts broadcast from the server
-    socket.on("new-post", (post) => {
-      console.log("New post received via WebSocket:", post);
-      addMarker(post);
-    });
+        // Listen for validation updates to update the UI in real-time
+        socket.on('post-validated', ({ postId, userValidations }) => {
+          const validationSpan = document.getElementById(`validations-${postId}`);
+          if (validationSpan) validationSpan.textContent = userValidations;
+        });
+    }
 
-    // Listen for validation requests from the server
-    socket.on('request-validation', (post) => {
-      const userConfirms = confirm(
-        `A nearby '${post.category} ${post.title}' was reported.\n\nCan you confirm this is happening?`
-      );
-      if (userConfirms) {
-        validatePost(post._id);
-      }
-    });
-
-    // Listen for validation updates to update the UI in real-time
-    socket.on('post-validated', ({ postId, userValidations }) => {
-      const validationSpan = document.getElementById(`validations-${postId}`);
-      if (validationSpan) validationSpan.textContent = userValidations;
-    });
+    document.addEventListener('DOMContentLoaded', checkAuth);
   </script>
 </body>
 </html>

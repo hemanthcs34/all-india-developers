@@ -188,8 +188,26 @@
     <img src="logo.png" alt="Ushe Nav Logo" class="logo-img" />
     <h1>Ushe Nav</h1>
     <p>City Pulse Agent – Smarter Cities, Safer Citizens</p>
-    <a href="map.html" class="btn">Enter City Map</a>
+    <a href="login.html" class="btn" id="main-action-btn">Login to Enter</a>
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const response = await fetch('/api/auth/current_user');
+        const actionButton = document.getElementById('main-action-btn');
+
+        if (response.ok) {
+          const user = await response.json();
+          actionButton.textContent = `Welcome, ${user.username}! Enter Map`;
+          actionButton.href = 'map.html';
+        } else {
+          // User is not logged in, default link to login.html is correct.
+        }
+      } catch (error) {
+        // Server is likely down, do nothing and let the button link to login.
+      }
+    });
+  </script>
 </body>
 </html>
-

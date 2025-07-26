@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ushe-Gram</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #007bff; }
+        .nav-links a { margin: 0 15px; text-decoration: none; color: #007bff; font-weight: 600; }
+        .feed-container { max-width: 600px; margin: auto; }
+        .post-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 20px; }
+        .post-header { padding: 15px; font-weight: 600; border-bottom: 1px solid #efefef; }
+        .post-image img { width: 100%; display: block; }
+        .post-content { padding: 15px; }
+        .post-actions { display: flex; gap: 15px; padding: 0 15px 15px; align-items: center; } /* FIX: Vertically aligns like button and category */
+        .post-actions button { background: none; border: none; font-size: 24px; cursor: pointer; padding: 0; line-height: 1; }
+        .post-likes { font-weight: 600; padding: 0 15px 10px; }
+        .comments-section { padding: 0 15px 15px; }
+        .comment { margin-bottom: 5px; }
+        .comment-form { display: flex; border-top: 1px solid #efefef; padding: 10px 15px; }
+        .comment-form input { flex-grow: 1; border: none; outline: none; background: transparent; }
+        .comment-form button { background: none; border: none; color: #007bff; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Ushe-Gram</h1>
+        <div class="nav-links">
+            <a href="map.html">City Map</a>
+            <a href="leaderboard.html">Leaderboard</a>
+            <a href="#" id="logoutBtn">Logout</a>
+        </div>
+    </div>
+
+    <div class="feed-container" id="feedContainer">
+        <!-- Posts will be injected here -->
+    </div>
+
+    <script src="http://localhost:5000/socket.io/socket.io.js"></script>
+    <script>
+        let currentUser = null;
+
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/current_user');
+                if (!response.ok) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                currentUser = await response.json();
+                loadFeed();
+                initializeSockets();
+            } catch (error) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        function createPostCard(post) {
+            if (!currentUser) {
+                console.error("FATAL: Attempted to render a post card without a logged-in user.");
+                return '';
+            }
+
+            const likes = post.likes || [];
+            const comments = post.comments || [];
+            const isLiked = likes.includes(currentUser.username);
+
+            return `
+                <div class="post-card" id="post-${post._id}">
+                    <div class="post-header">${post.author}</div>
+                    ${post.imagePath ? `<div class="post-image"><img src="http://localhost:5000${post.imagePath}" alt="${post.title}"></div>` : ''}
+                    <div class="post-content">
+                        <div class="post-actions">
+                            <button onclick="likePost('${post._id}')">${isLiked ? '❤️' : '🤍'}</button>
+                            <span>${post.category}</span>
+                        </div>
+                        <div class="post-likes">${likes.length} likes</div>
+                        <b>${post.title}</b>
+                        <p>${post.description || ''}</p>
+                    </div>
+                    <div class="comments-section">
+                        ${comments.map(c => `<div class="comment"><b>${c.username}</b> ${c.text}</div>`).join('')}
+                    </div>
+                    <form class="comment-form" onsubmit="handleComment(event, '${post._id}')">
+                        <input type="text" name="comment" placeholder="Add a comment..." autocomplete="off" required>
+                        <button type="submit">Post</button>
+                    </form>
+                </div>
+            `;
+        }
+
+        async function loadFeed() {
+            const response = await fetch('/api/media/posts');
+            const posts = await response.json();
+            const feedContainer = document.getElementById('feedContainer');
+            feedContainer.innerHTML = posts.map(createPostCard).join('');
+        }
+
+        async function likePost(postId) {
+            if (!currentUser) return;
+            await fetch(`/api/media/${postId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser.username })
+            });
+        }
+
+        async function handleComment(event, postId) {
+            event.preventDefault(); // Prevent default form submission
+            if (!currentUser) return;
+
+            const form = event.target;
+            const input = form.querySelector('input[name="comment"]');
+            const text = input.value.trim();
+
+            if (text) {
+                input.value = ''; // Clear the input field immediately
+                try {
+                    await fetch(`/api/media/${postId}/comment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: currentUser.username, text })
+                    });
+                } catch (error) {
+                    console.error("Failed to post comment:", error);
+                    input.value = text; // Restore text on failure
+                    alert("Could not post comment. Please try again.");
+                }
+            }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = 'login.html';
+        });
+
+        function initializeSockets() {
+            const socket = io("http://localhost:5000");
+
+            socket.on('post-updated', (updatedPost) => {
+                const postElement = document.getElementById(`post-${updatedPost._id}`);
+                if (postElement) {
+                    // This is a simple way to re-render; a more advanced app would update only the changed parts.
+                    postElement.outerHTML = createPostCard(updatedPost);
+                }
+            });
+
+            socket.on('new-post', (newPost) => {
+                const feedContainer = document.getElementById('feedContainer');
+                feedContainer.insertAdjacentHTML('afterbegin', createPostCard(newPost));
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html>
+

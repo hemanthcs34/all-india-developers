@@ -57,6 +57,19 @@
     <a href="map.html">Back to Map</a>
 
     <script>
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/auth/current_user');
+                if (!response.ok) {
+                    window.location.href = 'login.html';
+                } else {
+                    fetchAnalytics();
+                }
+            } catch (error) {
+                window.location.href = 'login.html';
+            }
+        }
+
         async function fetchAnalytics() {
             try {
                 const response = await fetch('http://localhost:5000/api/analytics/summary');
@@ -110,7 +123,7 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', fetchAnalytics);
+        document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
 </body>
 </html>

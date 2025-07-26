@@ -1,4 +1,5 @@
 const Media = require('../models/Media');
+const User = require('../models/User');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +23,7 @@ function getDistance(lat1, lon1, lat2, lon2) {
 // @route   POST /api/media/upload
 exports.uploadPost = async (req, res) => {
   try {
-    const { lat, lon, title, description, category } = req.body;
+    const { author, lat, lon, title, description, category } = req.body;
 
     // --- AI Image Validation Logic ---
     if (req.file) {
@@ -67,6 +68,7 @@ exports.uploadPost = async (req, res) => {
     // --- End of AI Validation ---
 
     const newPost = new Media({
+      author,
       lat: parseFloat(lat),
       lon: parseFloat(lon),
       title,
@@ -79,6 +81,10 @@ exports.uploadPost = async (req, res) => {
     });
 
     await newPost.save();
+
+    // Award points to the user for creating a post
+    await User.findOneAndUpdate({ username: author }, { $inc: { points: 10 }, $setOnInsert: { username: author } }, { upsert: true });
+
 
     const io = require('../socket').getIO();
 
@@ -112,6 +118,63 @@ exports.uploadPost = async (req, res) => {
       return res.status(400).json({ message: `Validation failed: ${messages}` });
     }
     res.status(500).json({ message: 'An unexpected server error occurred.' });
+  }
+};
+
+// @desc    Like or unlike a post
+// @route   POST /api/media/:id/like
+exports.likePost = async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ message: 'Username is required.' });
+
+    const post = await Media.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: 'Post not found.' });
+
+    const io = require('../socket').getIO();
+
+    // Toggle like
+    if (post.likes.includes(username)) {
+      post.likes.pull(username); // Unlike
+      await User.findOneAndUpdate({ username: post.author }, { $inc: { points: -1 } });
+    } else {
+      post.likes.push(username); // Like
+      await User.findOneAndUpdate({ username: post.author }, { $inc: { points: 1 } });
+    }
+
+    await post.save();
+
+    io.emit('post-updated', post);
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error while liking post.' });
+  }
+};
+
+// @desc    Comment on a post
+// @route   POST /api/media/:id/comment
+exports.commentOnPost = async (req, res) => {
+  try {
+    const { username, text } = req.body;
+    if (!username || !text) return res.status(400).json({ message: 'Username and text are required.' });
+
+    const post = await Media.findById(req.params.id);
+    if (!post) return res.status(404).json({ message: 'Post not found.' });
+
+    const newComment = { username, text };
+    post.comments.push(newComment);
+
+    // Award points for commenting
+    await User.findOneAndUpdate({ username: post.author }, { $inc: { points: 2 } });
+
+    await post.save();
+
+    const io = require('../socket').getIO();
+    io.emit('post-updated', post);
+
+    res.status(201).json(post);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error while commenting.' });
   }
 };
 
