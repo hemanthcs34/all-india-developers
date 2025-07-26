@@ -28,14 +28,13 @@ exports.uploadPost = async (req, res) => {
     // --- AI Image Validation Logic ---
     if (req.file) {
       const validationRules = {
-        '⚡': ['electric', 'power', 'wire', 'pole', 'storm'],
+        '⚡': ['electric', 'power', 'wire', 'pole', 'storm','crowd'],
         '🚧': ['road', 'car', 'construction', 'traffic', 'street', 'pavement'],
         '🎭': ['people', 'event', 'crowd', 'stage', 'music', 'art'],
         '☔': ['water', 'rain', 'flood', 'street', 'wet', 'umbrella'],
       };
 
-      const imagePath = path.join(__dirname, '..', 'uploads', req.file.filename);
-      const imageBytes = fs.readFileSync(imagePath, { encoding: 'base64' });
+      const imageBytes = req.file.buffer.toString('base64');
 
       const clarifaiResponse = await axios.post(
         "https://api.clarifai.com/v2/models/general-image-recognition/versions/aa7f35c01e0642fda5cf400f543e7c40/outputs",
@@ -55,8 +54,7 @@ exports.uploadPost = async (req, res) => {
       const isRelevant = concepts.some(concept => relevantTags.includes(concept));
 
       if (!isRelevant) {
-        // If not relevant, delete the uploaded file and reject the post.
-        fs.unlinkSync(imagePath);
+        // If not relevant, reject the post. No file to delete as it was in memory.
         return res.status(400).json({
           message: `Image does not seem relevant to the category '${category}'. AI detected: ${concepts.slice(0, 5).join(', ')}.`
         });
