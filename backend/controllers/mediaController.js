@@ -34,12 +34,10 @@ exports.uploadPost = async (req, res) => {
         '☔': ['water', 'rain', 'flood', 'street', 'wet', 'umbrella'],
       };
 
-      const imageBytes = req.file.buffer.toString('base64');
-
       const clarifaiResponse = await axios.post(
         "https://api.clarifai.com/v2/models/general-image-recognition/versions/aa7f35c01e0642fda5cf400f543e7c40/outputs",
         {
-          "inputs": [{ "data": { "image": { "base64": imageBytes } } }]
+          "inputs": [{ "data": { "image": { "url": req.file.path } } }]
         },
         {
           headers: {
@@ -54,7 +52,6 @@ exports.uploadPost = async (req, res) => {
       const isRelevant = concepts.some(concept => relevantTags.includes(concept));
 
       if (!isRelevant) {
-        // If not relevant, reject the post. No file to delete as it was in memory.
         return res.status(400).json({
           message: `Image does not seem relevant to the category '${category}'. AI detected: ${concepts.slice(0, 5).join(', ')}.`
         });
@@ -72,7 +69,7 @@ exports.uploadPost = async (req, res) => {
       title,
       description,
       category,
-      imagePath: req.file ? `/uploads/${req.file.filename}` : null,
+      imagePath: req.file ? req.file.path : null,
       // If an image was processed, mark as validated and store tags
       isValidated: !!req.file,
       aiTags: aiTags || []

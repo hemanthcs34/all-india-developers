@@ -72,7 +72,7 @@
             return `
                 <div class="post-card" id="post-${post._id}">
                     <div class="post-header">${post.author}</div>
-                    ${post.imagePath ? `<div class="post-image"><img src="https://ushe-nav-backend.onrender.com${post.imagePath}" alt="${post.title}"></div>` : ''}
+                    ${post.imagePath ? `<div class="post-image"><img src="${post.imagePath}" alt="${post.title}"></div>` : ''}
                     <div class="post-content">
                         <div class="post-actions">
                             <button onclick="castVote('${post._id}', 'up')">${isLiked ? '❤️' : '🤍'}</button>

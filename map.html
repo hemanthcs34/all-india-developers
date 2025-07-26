@@ -140,7 +140,7 @@
     function addMarker(post) {
       const { _id, lat, lon, title, description, category, imagePath, upvotes, downvotes } = post;
       // Prepend server URL if it's a relative path
-      const imageSrc = imagePath ? `https://ushe-nav-backend.onrender.com${imagePath}` : null;
+      const imageSrc = imagePath; // Cloudinary provides a full URL
 
       const popupContent =
         `<b>${category} ${title}</b><br>${description || ""}` +
