@@ -19,14 +19,14 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Middlewares
 app.use(cors({
-  origin: 'https://mindmaze-ushe-nav-city-pulse-agent.netlify.app',
+  origin: 'https://mindmaze-ushe-nav-city-pulse-agent.netlify.app', // Explicitly trust your Netlify frontend
   credentials: true // Allow cookies to be sent
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 if (isProduction) {
-  app.set('trust proxy', 1); // trust first proxy
+  app.set('trust proxy', 1); // Trust the first proxy (important for Render)
 }
 
 // --- Session and Passport Middleware ---
@@ -36,10 +36,9 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    secure: isProduction, // Only send cookies over HTTPS in production
+    sameSite: isProduction ? 'none' : 'lax', // Required for cross-domain cookies
+    httpOnly: true
   }
 }));
 
@@ -57,10 +56,5 @@ app.use("/api/media", mediaRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-
-// --- Serve Frontend Static Files ---
-// This tells Express where to find your index.html, map.html, etc.
-// It will now serve them automatically.
-app.use(express.static(path.join(__dirname, '..')));
 
 module.exports = app;
