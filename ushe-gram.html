@@ -106,7 +106,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: currentUser.username, voteType }),
-                credentials: 'include'
+                credentials: 'include' // THIS IS CRITICAL
             });
         }
 

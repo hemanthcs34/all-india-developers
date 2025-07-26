@@ -15,7 +15,7 @@ router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: 'https://mindmaze-ushe-nav-city-pulse-agent.netlify.app/login.html' }),
   (req, res) => {
     // Successful authentication, redirect to the map.
-    res.redirect('https://mindmaze-ushe-nav-city-pulse-agent.netlify.app/map.html');
+    res.redirect('https://mindmaze-ushe-nav-city-pulse-agent.netlify.app/map.html'); // This must be the full URL
   }
 );
 

@@ -19,7 +19,7 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Middlewares
 app.use(cors({
-  origin: 'https://mindmaze-ushe-nav-city-pulse-agent.netlify.app', // Explicitly trust your frontend
+  origin: 'https://mindmaze-ushe-nav-city-pulse-agent.netlify.app',
   credentials: true // Allow cookies to be sent
 }));
 app.use(express.json());
@@ -36,8 +36,10 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
   cookie: {
-    secure: isProduction, // Only send cookies over HTTPS
-    sameSite: isProduction ? 'none' : 'lax' // Allow cross-site cookie usage
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
 
