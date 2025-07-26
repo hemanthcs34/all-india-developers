@@ -108,3 +108,13 @@ button:hover {
   border: none;
   text-align: center;
 }
+
+.vote-buttons {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.vote-buttons button {
+  font-size: 1.2em;
+}

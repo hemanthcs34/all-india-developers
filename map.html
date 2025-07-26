@@ -138,14 +138,18 @@
     };
 
     function addMarker(post) {
-      const { _id, lat, lon, title, description, category, imagePath, userValidations } = post;
+      const { _id, lat, lon, title, description, category, imagePath, upvotes, downvotes } = post;
       // Prepend server URL if it's a relative path
       const imageSrc = imagePath ? `http://localhost:5000${imagePath}` : null;
 
       const popupContent =
         `<b>${category} ${title}</b><br>${description || ""}` +
         (imageSrc ? `<br><img src="${imageSrc}" style="width:100px;margin-top:5px;">` : "") +
-        `<br><hr style="margin: 5px 0;">User Validations: <span id="validations-${_id}">${userValidations || 0}</span>`;
+        `<br><hr style="margin: 5px 0;">` +
+        `<div class="vote-buttons">` +
+        `  <button onclick="castVote('${_id}', 'up')">👍 <span id="upvotes-${_id}">${upvotes ? upvotes.length : 0}</span></button>` +
+        `  <button onclick="castVote('${_id}', 'down')">👎 <span id="downvotes-${_id}">${downvotes ? downvotes.length : 0}</span></button>` +
+        `</div>`;
 
       const icon = categoryIcons[category] || L.marker.prototype.options.icon; // Fallback to default if category is unknown
       const marker = L.marker([lat, lon], { icon: icon }).addTo(map).bindPopup(popupContent);
@@ -166,19 +170,20 @@
       }
     }
 
-    async function validatePost(postId) {
+    async function castVote(postId, voteType) {
+      if (!currentUser) return;
       try {
-        const response = await fetch(`http://localhost:5000/api/media/${postId}/validate`, {
+        const response = await fetch(`/api/media/${postId}/vote`, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: currentUser.username, voteType: voteType })
         });
         if (!response.ok) {
           const errorData = await response.json();
-          alert(`Failed to validate: ${errorData.message || 'Unknown error'}`);
-        } else {
-          showToast("✅ Thanks for validating!");
+          alert(`Failed to vote: ${errorData.message || 'Unknown error'}`);
         }
       } catch (error) {
-        console.error('Validation request failed:', error);
+        console.error('Vote request failed:', error);
       }
     }
 
@@ -249,20 +254,13 @@
           addMarker(post);
         });
 
-        // Listen for validation requests from the server
-        socket.on('request-validation', (post) => {
-          const userConfirms = confirm(
-            `A nearby '${post.category} ${post.title}' was reported.\n\nCan you confirm this is happening?`
-          );
-          if (userConfirms) {
-            validatePost(post._id);
+        // Listen for any post update (vote, comment) and re-render the marker's popup
+        socket.on('post-updated', (updatedPost) => {
+          const marker = markers.find(m => m.getPopup().getContent().includes(`id="upvotes-${updatedPost._id}"`));
+          if (marker && marker.isPopupOpen()) {
+            marker.closePopup();
+            marker.openPopup();
           }
-        });
-
-        // Listen for validation updates to update the UI in real-time
-        socket.on('post-validated', ({ postId, userValidations }) => {
-          const validationSpan = document.getElementById(`validations-${postId}`);
-          if (validationSpan) validationSpan.textContent = userValidations;
         });
     }
 
