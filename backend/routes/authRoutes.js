@@ -12,10 +12,10 @@ router.get('/current_user', getCurrentUser);
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: 'https://your-netlify-site.netlify.app/login.html' }),
+  passport.authenticate('google', { failureRedirect: 'https://mindmaze-ushe-nav-city-pulse-agent.netlify.app/login.html' }),
   (req, res) => {
     // Successful authentication, redirect to the map.
-    res.redirect('https://your-netlify-site.netlify.app/map.html');
+    res.redirect('https://mindmaze-ushe-nav-city-pulse-agent.netlify.app/map.html');
   }
 );
 

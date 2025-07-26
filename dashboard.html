@@ -58,7 +58,7 @@
 
         async function checkAuth() {
             try {
-                const response = await fetch('https://ushe-nav-backend.onrender.com/api/auth/current_user');
+                const response = await fetch('https://ushe-nav-backend.onrender.com/api/auth/current_user', { credentials: 'include' });
                 if (!response.ok) {
                     window.location.href = 'login.html';
                     return;
@@ -74,7 +74,7 @@
             document.getElementById('username').textContent = currentUser.username;
             document.getElementById('points').textContent = currentUser.points;
 
-            const response = await fetch('https://ushe-nav-backend.onrender.com/api/users/me/posts');
+            const response = await fetch('https://ushe-nav-backend.onrender.com/api/users/me/posts', { credentials: 'include' });
             const posts = await response.json();
             
             document.getElementById('postCount').textContent = posts.length;
@@ -94,7 +94,7 @@
         }
 
         document.getElementById('logoutBtn').addEventListener('click', async () => {
-            await fetch('https://ushe-nav-backend.onrender.com/api/auth/logout', { method: 'POST' });
+            await fetch('https://ushe-nav-backend.onrender.com/api/auth/logout', { method: 'POST', credentials: 'include' });
             window.location.href = 'login.html';
         });
 
